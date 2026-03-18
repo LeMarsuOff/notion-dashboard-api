@@ -145,7 +145,7 @@ export default async function handler(req, res) {
         rrMaxAtteintOb: getNumber(p, "RR max atteint OB"),
 
         resultatOb: getSelectLike(p, "Résultat OB"),
-        confirmation: getSelectLike(p, "Confirmation / C…"),
+        confirmation: getSelectLike(p, "Confirmation / Continuation"),
         m15Type: getSelectLike(p, "M15 Type"),
         type: getSelectLike(p, "Type"),
         flip: getSelectLike(p, "Flip ?"),
