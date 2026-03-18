@@ -1,8 +1,4 @@
 {
-  "name": "notion-dashboard-api",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "@notionhq/client": "^2.2.15"
-  }
+  "name": "dashboard-api",
+  "version": "1.0.0"
 }
