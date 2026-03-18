@@ -4,6 +4,11 @@ const notion = new Client({
   auth: process.env.NOTION_TOKEN,
 });
 
+// ── Cache en mémoire 5 minutes ──
+let _cache = null;
+let _cacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 function getProperty(properties, name) {
   return properties?.[name];
 }
@@ -54,27 +59,28 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "GET") {
-    return res.status(405).json({
-      success: false,
-      error: "Method not allowed",
-    });
+    return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
   try {
     if (!process.env.NOTION_TOKEN) {
-      return res.status(500).json({
-        success: false,
-        error: "NOTION_TOKEN manquant",
-      });
+      return res.status(500).json({ success: false, error: "NOTION_TOKEN manquant" });
     }
-
     if (!process.env.NOTION_DATABASE_ID) {
-      return res.status(500).json({
-        success: false,
-        error: "NOTION_DATABASE_ID manquant",
-      });
+      return res.status(500).json({ success: false, error: "NOTION_DATABASE_ID manquant" });
     }
 
+    const now = Date.now();
+    const forceRefresh = req.query.refresh === "1";
+
+    // Servir depuis le cache si valide
+    if (_cache && !forceRefresh && now - _cacheTime < CACHE_TTL) {
+      res.setHeader("X-Cache", "HIT");
+      res.setHeader("X-Cache-Age", Math.round((now - _cacheTime) / 1000) + "s");
+      return res.status(200).json(_cache);
+    }
+
+    // Sinon, requête Notion
     const allResults = [];
     let hasMore = true;
     let startCursor = undefined;
@@ -96,7 +102,6 @@ export default async function handler(req, res) {
 
       return {
         id: page.id,
-
         typeDeTrade: getSelectLike(p, "Type de trade"),
         pair: getSelectLike(p, "Pair"),
         resultatTp1: getSelectLike(p, "Résultat TP 1"),
@@ -105,16 +110,13 @@ export default async function handler(req, res) {
         heureDst: getSelectLike(p, "Heure DST"),
         min: getSelectLike(p, "Min"),
         order: getSelectLike(p, "Order"),
-
         structureH4: getSelectLike(p, "Structure H4"),
-        obstaclesH4:  getMultiSelect(p, "Obstacles H4"),
-
+        obstaclesH4: getMultiSelect(p, "Obstacles H4"),
         m15TypeDetail: getSelectLike(p, "M15 Type Détail"),
         structureM15: getSelectLike(p, "Structure M15"),
         obstaclesM15: getMultiSelect(p, "Obstacles M15"),
         avantageM15: getSelectLike(p, "Avantage M15"),
         arriveeAuPe: getSelectLike(p, "Arrivée au PE"),
-
         beManagement: getMultiSelect(p, "BE Management"),
         rrMaxAtteint: getNumber(p, "RR max atteint"),
         rrTrailing: getNumber(p, "RR Trailing"),
@@ -122,13 +124,10 @@ export default async function handler(req, res) {
         rrTpMinus27: getNumber(p, "RR TP -27"),
         rrReel: getNumber(p, "RR Réel"),
         commissions: getNumber(p, "Commissions"),
-
         rrTpH4_071: getNumber(p, "RR TP H4 0.71"),
         rrTpH4_0: getNumber(p, "RR TP H4 0"),
         rrTpH4_Minus27: getNumber(p, "RR TP H4 -27"),
-
         badFeeling: getCheckbox(p, "Bad feeling"),
-
         jour: getSelectLike(p, "Jour"),
         jourUtc: getSelectLike(p, "Jour UTC"),
         jourFormule: getSelectLike(p, "Jour Formule"),
@@ -138,12 +137,9 @@ export default async function handler(req, res) {
         anneeFormule: getSelectLike(p, "Année Formule"),
         annee: getSelectLike(p, "Année"),
         mois: getSelectLike(p, "Mois"),
-
         obM15Tp1: getNumber(p, "OB M15 TP 1"),
         pourcentageRisque: getNumber(p, "% Risqué"),
-
         rrMaxAtteintOb: getNumber(p, "RR max atteint OB"),
-
         resultatOb: getSelectLike(p, "Résultat OB"),
         confirmation: getSelectLike(p, "Confirmation / Continuation"),
         m15Type: getSelectLike(p, "M15 Type"),
@@ -152,15 +148,17 @@ export default async function handler(req, res) {
       };
     });
 
-    return res.status(200).json({
-      success: true,
-      count: trades.length,
-      trades,
-    });
+    const payload = { success: true, count: trades.length, trades };
+
+    // Mettre en cache
+    _cache = payload;
+    _cacheTime = now;
+
+    res.setHeader("X-Cache", "MISS");
+    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=60");
+    return res.status(200).json(payload);
+
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: error.message ?? "Erreur inconnue",
-    });
+    return res.status(500).json({ success: false, error: error.message ?? "Erreur inconnue" });
   }
 }
