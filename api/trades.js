@@ -107,11 +107,11 @@ export default async function handler(req, res) {
         order: getSelectLike(p, "Order"),
 
         structureH4: getSelectLike(p, "Structure H4"),
-        obstaclesH4: getSelectLike(p, "Obstacles H4"),
+        obstaclesH4:  getMultiSelect(p, "Obstacles H4"),
 
         m15TypeDetail: getSelectLike(p, "M15 Type Détail"),
         structureM15: getSelectLike(p, "Structure M15"),
-        obstaclesM15: getSelectLike(p, "Obstacles M15"),
+        obstaclesM15: getMultiSelect(p, "Obstacles M15"),
         avantageM15: getSelectLike(p, "Avantage M15"),
         arriveeAuPe: getSelectLike(p, "Arrivée au PE"),
 
