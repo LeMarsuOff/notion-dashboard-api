@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         heureDst: p["Heure DST"]?.select?.name ?? null,
         order: p["Order"]?.select?.name ?? null,
         obstaclesH4: p["Obstacles H4"]?.select?.name ?? null,
-        m15TypeDetail: p["M15 type détail"]?.select?.name ?? null,
+        m15TypeDetail: p["M15 Type Détail"]?.select?.name ?? null,
         obstaclesM15: p["Obstacles M15"]?.select?.name ?? null,
         rrMaxAtteint: p["RR max atteint"]?.select?.name ?? null,
         rrTp1: p["RR TP 1"]?.select?.name ?? null,
