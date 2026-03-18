@@ -6,26 +6,8 @@ const notion = new Client({
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
 
   try {
-    if (!process.env.NOTION_TOKEN) {
-      return res.status(500).json({ error: "NOTION_TOKEN manquant" });
-    }
-
-    if (!process.env.NOTION_DATABASE_ID) {
-      return res.status(500).json({ error: "NOTION_DATABASE_ID manquant" });
-    }
-
     const response = await notion.databases.query({
       database_id: process.env.NOTION_DATABASE_ID,
     });
@@ -36,19 +18,45 @@ export default async function handler(req, res) {
       return {
         id: page.id,
 
+        // 🟦 DATE
         date: p["Date"]?.date?.start ?? null,
+
+        // 🟩 SELECT / TEXT
+        typeTrade: p["Type de trade"]?.select?.name ?? null,
         pair: p["Pair"]?.select?.name ?? null,
         resultatTp1: p["Résultat TP 1"]?.select?.name ?? null,
         heureDst: p["Heure DST"]?.select?.name ?? null,
         order: p["Order"]?.select?.name ?? null,
+
+        structureH4: p["Structure H4"]?.select?.name ?? null,
         obstaclesH4: p["Obstacles H4"]?.select?.name ?? null,
+
         m15TypeDetail: p["M15 Type Détail"]?.select?.name ?? null,
+        structureM15: p["Structure M15"]?.select?.name ?? null,
         obstaclesM15: p["Obstacles M15"]?.select?.name ?? null,
-        rrMaxAtteint: p["RR max atteint"]?.select?.name ?? null,
-        rrTp1: p["RR TP 1"]?.select?.name ?? null,
-        rrTpMinus27: p["RR TP -27"]?.select?.name ?? null,
-        rrTrailing: p["RR Trailing"]?.select?.name ?? null,
-        beManagement: p["BE Management"]?.multi_select?.map((item) => item.name) ?? [],
+        avantageM15: p["Avantage M15"]?.select?.name ?? null,
+
+        arriveePE: p["Arrivée au PE"]?.select?.name ?? null,
+
+        // 🟣 MULTI SELECT
+        beManagement:
+          p["BE Management"]?.multi_select?.map((x) => x.name) ?? [],
+
+        // 🟡 NUMBERS
+        rrMax: p["RR max atteint"]?.number ?? null,
+        rrTrailing: p["RR Trailing"]?.number ?? null,
+        rrTp1: p["RR TP 1"]?.number ?? null,
+        rrTpMinus27: p["RR TP -27"]?.number ?? null,
+        rrReel: p["RR Réel"]?.number ?? null,
+        commissions: p["Commissions"]?.number ?? null,
+
+        rrTpH4_071: p["RR TP H4 0.71"]?.number ?? null,
+        rrTpH4_0: p["RR TP H4 0"]?.number ?? null,
+        rrTpH4_27: p["RR TP H4 -27"]?.number ?? null,
+
+        // 🟠 CHECKBOX
+        tpAtteints: p["TP atteints"]?.checkbox ?? false,
+        badFeeling: p["Bad feeling"]?.checkbox ?? false,
       };
     });
 
