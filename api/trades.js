@@ -97,7 +97,7 @@ export default async function handler(req, res) {
         min:            getSelectLike(p, "Min"),
         order:          getSelectLike(p, "Order"),
         structureH4:    getSelectLike(p, "Structure H4"),
-        obstaclesH4:    getMultiSelect(p, "Obstacles H4").join(", ") || getSelectLike(p, "Obstacles H4"),
+        obstaclesH4:    getMultiSelect(p, "Obstacles H4").length ? getMultiSelect(p, "Obstacles H4") : getSelectLike(p, "Obstacles H4"),
         m15TypeDetail:  getSelectLike(p, "M15 Type Détail"),
         structureM15:   getSelectLike(p, "Structure M15"),
         obstaclesM15:   getMultiSelect(p, "Obstacles M15"),  // multi-select fix
