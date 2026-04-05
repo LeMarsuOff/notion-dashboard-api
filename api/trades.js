@@ -41,6 +41,18 @@ function getMultiSelect(properties, name) {
   return prop.multi_select.map((item) => item.name);
 }
 
+// ── Récupère l'URL du premier fichier d'une propriété Files & Media ──
+function getFileUrl(properties, name) {
+  const prop = getProperty(properties, name);
+  if (!prop?.files || prop.files.length === 0) return null;
+  const file = prop.files[0];
+  // Fichier uploadé dans Notion (URL signée temporaire)
+  if (file.type === "file") return file.file.url;
+  // Lien externe
+  if (file.type === "external") return file.external.url;
+  return null;
+}
+
 // ── CORS headers applied to every response ──
 function setCORS(res) {
   res.setHeader("Access-Control-Allow-Origin",  "*");
@@ -100,7 +112,7 @@ export default async function handler(req, res) {
         obstaclesH4:    getMultiSelect(p, "Obstacles H4").length ? getMultiSelect(p, "Obstacles H4") : getSelectLike(p, "Obstacles H4"),
         m15TypeDetail:  getSelectLike(p, "M15 Type Détail"),
         structureM15:   getSelectLike(p, "Structure M15"),
-        obstaclesM15:   getMultiSelect(p, "Obstacles M15"),  // multi-select fix
+        obstaclesM15:   getMultiSelect(p, "Obstacles M15"),
         avantageM15:    getSelectLike(p, "Avantage M15"),
         arriveeAuPe:    getSelectLike(p, "Arrivée au PE"),
         beManagement:   getMultiSelect(p, "BE Management"),
@@ -131,6 +143,8 @@ export default async function handler(req, res) {
         m15Type:        getSelectLike(p, "M15 Type"),
         type:           getSelectLike(p, "Type"),
         flip:           getSelectLike(p, "Flip ?"),
+        // ── Nouveau : screenshot M15 ──
+        m15Image:       getFileUrl(p, "M15"),
       };
     });
 
