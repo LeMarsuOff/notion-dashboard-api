@@ -143,8 +143,11 @@ export default async function handler(req, res) {
         m15Type:        getSelectLike(p, "M15 Type"),
         type:           getSelectLike(p, "Type"),
         flip:           getSelectLike(p, "Flip ?"),
-        // ── Nouveau : screenshot M15 ──
-        m15Image:       getFileUrl(p, "M15"),
+        // ── Screenshots ──
+        m15Image:       getFileUrl(p, "M15 Before") || getFileUrl(p, "M15"),
+        h4Before:       getFileUrl(p, "H4 Before"),
+        m15After:       getFileUrl(p, "M15 After"),
+
       };
     });
 
