@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       const p = page.properties;
       return {
         id: page.id,
-        typeDeTrade: getSelectLike(p, "Type de trade"),
+        typeDeTrade: getMultiSelect(p, "Type de trade"),
         pair: getSelectLike(p, "Pair"),
         resultatTp1: getSelectLike(p, "Résultat TP 1"),
         tpAtteints: getCheckbox(p, "TP atteints"),
