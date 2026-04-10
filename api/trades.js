@@ -4,6 +4,31 @@ const notion = new Client({
   auth: process.env.NOTION_TOKEN,
 });
 
+// ── Cache des IDs de propriétés non-fichier ──────────────────────────────────
+// On appelle databases.retrieve() une fois puis on cache 1h.
+// Cela permet d'utiliser filter_properties pour exclure les propriétés
+// de type "files" (M15 Before, H4 Before, M15 After).
+// Sans ça, Notion génère ~1776 signed URLs AWS à chaque requête
+// (592 trades × 3 images) → timeout Vercel dépassé (>10s).
+let _filterPropsCache     = null;
+let _filterPropsCacheTime = 0;
+const FILTER_CACHE_TTL    = 60 * 60 * 1000; // 1h
+
+async function getNonFilePropertyIds() {
+  if (_filterPropsCache && Date.now() - _filterPropsCacheTime < FILTER_CACHE_TTL) {
+    return _filterPropsCache;
+  }
+  const db = await notion.databases.retrieve({
+    database_id: process.env.NOTION_DATABASE_ID,
+  });
+  const ids = Object.values(db.properties)
+    .filter((prop) => prop.type !== "files")
+    .map((prop) => prop.id);
+  _filterPropsCache     = ids;
+  _filterPropsCacheTime = Date.now();
+  return ids;
+}
+
 function getProperty(properties, name) {
   return properties?.[name];
 }
@@ -41,18 +66,6 @@ function getMultiSelect(properties, name) {
   return prop.multi_select.map((item) => item.name);
 }
 
-// ── Récupère l'URL du premier fichier d'une propriété Files & Media ──
-function getFileUrl(properties, name) {
-  const prop = getProperty(properties, name);
-  if (!prop?.files || prop.files.length === 0) return null;
-  const file = prop.files[0];
-  // Fichier uploadé dans Notion (URL signée temporaire)
-  if (file.type === "file") return file.file.url;
-  // Lien externe
-  if (file.type === "external") return file.external.url;
-  return null;
-}
-
 // ── CORS headers applied to every response ──
 function setCORS(res) {
   res.setHeader("Access-Control-Allow-Origin",  "*");
@@ -81,15 +94,19 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, error: "NOTION_DATABASE_ID manquant" });
     }
 
+    // Exclut les propriétés fichier → Notion ne génère pas les signed URLs
+    const filterProps = await getNonFilePropertyIds();
+
     const allResults = [];
     let hasMore     = true;
     let startCursor = undefined;
 
     while (hasMore) {
       const response = await notion.databases.query({
-        database_id: process.env.NOTION_DATABASE_ID,
-        start_cursor: startCursor,
-        page_size: 100,
+        database_id:       process.env.NOTION_DATABASE_ID,
+        start_cursor:      startCursor,
+        page_size:         100,
+        filter_properties: filterProps,
       });
       allResults.push(...response.results);
       hasMore     = response.has_more;
@@ -143,11 +160,8 @@ export default async function handler(req, res) {
         m15Type:        getSelectLike(p, "M15 Type"),
         type:           getSelectLike(p, "Type"),
         flip:           getSelectLike(p, "Flip ?"),
-        // ── Screenshots ──
-        m15Image:       getFileUrl(p, "M15 Before") || getFileUrl(p, "M15"),
-        h4Before:       getFileUrl(p, "H4 Before"),
-        m15After:       getFileUrl(p, "M15 After"),
-
+        // Images retirées de ce endpoint (causaient le timeout).
+        // GET /api/image?id=PAGE_ID pour charger les images à la demande.
       };
     });
 
