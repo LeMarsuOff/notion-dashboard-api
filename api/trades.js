@@ -21,20 +21,15 @@ function getMultiSelect(properties, name) {
   if (!prop?.multi_select) return [];
   return prop.multi_select.map((item) => item.name);
 }
-
-// ── Récupère l'URL du premier fichier d'une propriété Files & Media ──
 function getFileUrl(properties, name) {
   const prop = getProperty(properties, name);
   if (!prop?.files || prop.files.length === 0) return null;
   const file = prop.files[0];
-  // Fichier uploadé dans Notion (URL signée temporaire)
   if (file.type === "file") return file.file.url;
-  // Lien externe
   if (file.type === "external") return file.external.url;
   return null;
 }
 
-// ── CORS headers applied to every response ──
 function setCORS(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -45,22 +40,12 @@ function setCORS(res) {
 export default async function handler(req, res) {
   setCORS(res);
 
-  // Preflight
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ success: false, error: "Method not allowed" });
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "GET") return res.status(405).json({ success: false, error: "Method not allowed" });
 
   try {
-    if (!process.env.NOTION_TOKEN) {
-      return res.status(500).json({ success: false, error: "NOTION_TOKEN manquant" });
-    }
-    if (!process.env.NOTION_DATABASE_ID) {
-      return res.status(500).json({ success: false, error: "NOTION_DATABASE_ID manquant" });
-    }
+    if (!process.env.NOTION_TOKEN) return res.status(500).json({ success: false, error: "NOTION_TOKEN manquant" });
+    if (!process.env.NOTION_DATABASE_ID) return res.status(500).json({ success: false, error: "NOTION_DATABASE_ID manquant" });
 
     const allResults = [];
     let hasMore = true;
@@ -81,55 +66,101 @@ export default async function handler(req, res) {
       const p = page.properties;
       return {
         id: page.id,
-        typeDeTrade: getMultiSelect(p, "Type de trade"),
-        pair: getSelectLike(p, "Pair"),
-        resultatTp1: getSelectLike(p, "Résultat TP 1"),
-        tpAtteints: getCheckbox(p, "TP atteints"),
-        date: getDate(p, "Date"),
-        heureDst: getSelectLike(p, "Heure DST"),
-        min: getSelectLike(p, "Min"),
-        order: getSelectLike(p, "Order"),
-        structureH4: getSelectLike(p, "Structure H4"),
-        obstaclesH4: getMultiSelect(p, "Obstacles H4").length
-          ? getMultiSelect(p, "Obstacles H4")
-          : getSelectLike(p, "Obstacles H4"),
-        m15TypeDetail: getSelectLike(p, "M15 Type Détail"),
-        structureM15: getSelectLike(p, "Structure M15"),
-        obstaclesM15: getMultiSelect(p, "Obstacles M15"),
-        avantageM15: getSelectLike(p, "Avantage M15"),
-        arriveeAuPe: getSelectLike(p, "Arrivée au PE"),
-        beManagement: getMultiSelect(p, "BE Management"),
-        rrMaxAtteint: getNumber(p, "RR max atteint"),
-        rrTrailing: getNumber(p, "RR Trailing"),
-        rrTp1: getNumber(p, "RR TP 1"),
-        rrTpMinus27: getNumber(p, "RR TP -27"),
-        rrReel: getNumber(p, "RR Réel"),
-        commissions: getNumber(p, "Commissions"),
-        rrTpH4_071: getNumber(p, "RR TP H4 0.71"),
-        rrTpH4_0: getNumber(p, "RR TP H4 0"),
-        rrTpH4_Minus27: getNumber(p, "RR TP H4 -27"),
-        badFeeling: getCheckbox(p, "Bad feeling"),
-        jour: getSelectLike(p, "Jour"),
-        jourUtc: getSelectLike(p, "Jour UTC"),
-        jourFormule: getSelectLike(p, "Jour Formule"),
-        sessionFormule: getSelectLike(p, "Session Formule"),
-        session: getSelectLike(p, "Session"),
-        moisFormule: getSelectLike(p, "Mois Formule"),
-        anneeFormule: getSelectLike(p, "Année Formule"),
-        annee: getSelectLike(p, "Année"),
-        mois: getSelectLike(p, "Mois"),
-        obM15Tp1: getNumber(p, "OB M15 TP 1"),
-        pourcentageRisque: getNumber(p, "% Risqué"),
-        rrMaxAtteintOb: getNumber(p, "RR max atteint OB"),
-        resultatOb: getSelectLike(p, "Résultat OB"),
-        confirmation: getSelectLike(p, "Confirmation / Continuation"),
-        m15Type: getSelectLike(p, "M15 Type"),
-        type: getSelectLike(p, "Type"),
-        flip: getSelectLike(p, "Flip ?"),
+
+        // ── Identification ──
+        pair:              getSelectLike(p, "Pair"),          // "Pair" reste (colonne 43) — "Paire" est le titre affiché
+        type:              getSelectLike(p, "Type"),
+        positionType:      getSelectLike(p, "Position Type"), // ex "Type de trade"
+        flip:              getSelectLike(p, "Flip ?"),
+        tier:              getSelectLike(p, "Tier"),
+        noTag:             getCheckbox(p,   "No-tag ?"),
+
+        // ── Timing ──
+        date:              getDate(p,       "Date"),
+        heureDst:          getSelectLike(p, "--- DST---"),    // ex "Heure DST"
+        heureUtc:          getSelectLike(p, "Heure UTC"),
+        min:               getSelectLike(p, "Min"),
+        timeUtc1:          getSelectLike(p, "Time (UTC +1)"),
+        jour:              getSelectLike(p, "Jour"),
+        jourUtc:           getSelectLike(p, "Jour UTC"),
+        session:           getSelectLike(p, "Session"),
+        sessionUtc:        getSelectLike(p, "Session UTC"),
+        sessionUtcReco:    getSelectLike(p, "Session UTC (Recommandée)"),
+
+        // ── Formules temporelles ──
+        jourFormule:       getSelectLike(p, "Day Formula"),      // ex "Jour Formule"
+        sessionFormule:    getSelectLike(p, "Session Formula"),   // ex "Session Formule"
+        moisFormule:       getSelectLike(p, "Month Formula"),     // ex "Mois Formule"
+        anneeFormule:      getSelectLike(p, "Year Formula"),      // ex "Année Formule"
+        annee:             getSelectLike(p, "Year"),              // ex "Année"
+        mois:              getSelectLike(p, "Month"),             // ex "Mois"
+
+        // ── Setup H4 ──
+        structureH4:       getSelectLike(p,  "H4 Structure"),     // ex "Structure H4"
+        obstaclesH4:       getMultiSelect(p, "H4 Obstacles").length
+                             ? getMultiSelect(p, "H4 Obstacles")
+                             : getSelectLike(p, "H4 Obstacles"),  // ex "Obstacles H4"
+
+        // ── Setup M15 ──
+        m15Type:           getSelectLike(p,  "M15 Type"),
+        m15TypeDetail:     getSelectLike(p,  "M15 Type Detailed"), // ex "M15 Type Détail"
+        structureM15:      getSelectLike(p,  "M15 Structure "),    // espace en fin — respecte le nom Notion
+        obstaclesM15:      getMultiSelect(p, "M15 Obstacles"),
+        avantageM15:       getSelectLike(p,  "M15 Pros"),          // ex "Avantage M15"
+        order:             getSelectLike(p,  "Order"),
+        confirmation:      getSelectLike(p,  "Confirmation / Continunation"), // faute dans Notion conservée
+
+        // ── Gestion du trade ──
+        arriveeAuPe:       getSelectLike(p,  "Arrival to Entry"),  // ex "Arrivée au PE"
+        beManagement:      getMultiSelect(p, "BE Management"),
+        tp:                getSelectLike(p,  "TP"),
+        risk:              getNumber(p,      "Risk"),
+        pourcentageRisque: getNumber(p,      "% Risqué"),
+        badFeeling:        getCheckbox(p,    "Bad feeling"),
+
+        // ── Résultats ──
+        positionResult:    getSelectLike(p, "Position Result"),    // ex "Résultat TP 1"
+        resultatOb:        getSelectLike(p, "Résultat OB"),
+        resultatMinus27:   getSelectLike(p, "Resultat -27"),
+        resultatRr3:       getSelectLike(p, "Résultat RR 3"),
+
+        // ── RR ──
+        rrReel:            getNumber(p, "RR Réel"),
+        rrTp1:             getNumber(p, "RR TP 1"),
+        rrTpMinus27:       getNumber(p, "RR TP -27"),
+        rrTp3:             getNumber(p, "RR TP 3"),
+        rrTrailing:        getNumber(p, "RR Trailing"),
+        rrMaxAtteint:      getNumber(p, "RR max atteint"),
+        rrTpH4_071:        getNumber(p, "RR TP H4 0.71"),
+        rrTpH4_0:          getNumber(p, "RR TP H4 0"),
+        rrTpH4_Minus27:    getNumber(p, "RR TP H4 -27"),
+        obM15Tp1:          getNumber(p, "OB M15 TP 1"),
+        rrMaxAtteintOb:    getNumber(p, "RR max atteint OB"),
+
+        // ── Scores ──
+        scoreJour:         getNumber(p, "Score Jour"),
+        scoreObstacles:    getNumber(p, "Score Obstacles"),
+        scorePair:         getNumber(p, "Score Pair"),
+        scoreSession:      getNumber(p, "Score Session"),
+        scoreSetup:        getNumber(p, "Score Setup"),
+        scoreTotal:        getNumber(p, "Score Total"),
+
+        // ── Filtres ──
+        filtresBase:       getSelectLike(p, "Filtres Base"),
+        filtresGlobalsBe:  getSelectLike(p, "Filtres Globals BE"),
+        filtresGlobalsSansBe: getSelectLike(p, "Filtres Globals Sans BE"),
+
+        // ── Divers ──
+        commissions:       getNumber(p,   "Commissions"),
+        creationDate:      getDate(p,     "Creation Date"),
+        notionUrl:         getSelectLike(p, "Notion URL"),
+
         // ── Screenshots ──
-        m15Image: getFileUrl(p, "M15 Before") || getFileUrl(p, "M15"),
-        h4Before: getFileUrl(p, "H4 Before"),
-        m15After: getFileUrl(p, "M15 After"),
+        m15Before:         getFileUrl(p, "M15 Before"),
+        m15After:          getFileUrl(p, "M15 After"),
+        h4Before:          getFileUrl(p, "H4 Before"),
+        // Alias pour compatibilité dashboard existant
+        m15Image:          getFileUrl(p, "M15 Before"),
       };
     });
 
