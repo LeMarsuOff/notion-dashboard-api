@@ -130,7 +130,7 @@ export default async function handler(req, res) {
         rrTpMinus27:       getNumber(p, "RR TP -27"),
         rrTp3:             getNumber(p, "RR TP 3"),
         rrTrailing:        getNumber(p, "RR Trailing"),
-        rrMaxAtteint:      getNumber(p, "RR max atteint"),
+        rrMaxAtteint:      getNumber(p, "RR Max"),
         rrTpH4_071:        getNumber(p, "RR TP H4 0.71"),
         rrTpH4_0:          getNumber(p, "RR TP H4 0"),
         rrTpH4_Minus27:    getNumber(p, "RR TP H4 -27"),
