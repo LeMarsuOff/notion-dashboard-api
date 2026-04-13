@@ -77,7 +77,7 @@ export default async function handler(req, res) {
 
         // ── Timing ──
         date:              getDate(p,       "Date"),
-        heureDst:          getSelectLike(p, "--- DST---"),    // ex "Heure DST"
+        heureDst:          getSelectLike(p, "Time (UTC +1)"),    // ex "Heure DST"
         heureUtc:          getSelectLike(p, "Heure UTC"),
         min:               getSelectLike(p, "Min"),
         timeUtc1:          getSelectLike(p, "Time (UTC +1)"),
