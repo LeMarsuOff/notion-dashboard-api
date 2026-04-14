@@ -70,7 +70,7 @@ export default async function handler(req, res) {
         // ── Identification ──
         pair:              getSelectLike(p, "Pair"),          // "Pair" reste (colonne 43) — "Paire" est le titre affiché
         type:              getSelectLike(p, "Type"),
-        positionType:      getSelectLike(p, "Position Type"), // ex "Type de trade"
+        positionType:      getMultiSelect(p, "Position Type"), // ex "Type de trade"
         flip:              getSelectLike(p, "Flip ?"),
         tier:              getSelectLike(p, "Tier"),
         noTag:             getCheckbox(p,   "No-tag ?"),
