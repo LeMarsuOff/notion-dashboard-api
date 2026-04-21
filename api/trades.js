@@ -1,10 +1,10 @@
+// Force redeploy 21 apr
 import { Client } from "@notionhq/client";
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
   notionVersion: "2025-09-03",
 });
-
 
 function getProperty(properties, name) { return properties?.[name]; }
 function getDate(properties, name) { const prop = getProperty(properties, name); return prop?.date?.start ?? null; }
