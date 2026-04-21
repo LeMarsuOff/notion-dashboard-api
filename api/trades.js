@@ -5,6 +5,7 @@ const notion = new Client({
   notionVersion: "2025-09-03",
 });
 
+
 function getProperty(properties, name) { return properties?.[name]; }
 function getDate(properties, name) { const prop = getProperty(properties, name); return prop?.date?.start ?? null; }
 function getNumber(properties, name) { const prop = getProperty(properties, name); return prop?.number ?? null; }
