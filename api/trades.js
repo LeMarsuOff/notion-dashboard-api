@@ -64,7 +64,7 @@ export default async function handler(req, res) {
       const response = await notion.dataSources.query({
         data_source_id: process.env.NOTION_DATA_SOURCE_ID,
         start_cursor: startCursor,
-        page_size: 100,
+        page_size: 50,
       });
       pageCount++;
       console.log(`Page ${pageCount}: ${response.results.length} results, has_more: ${response.has_more}`);
