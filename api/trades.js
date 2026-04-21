@@ -1,6 +1,9 @@
 import { Client } from "@notionhq/client";
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+  notionVersion: "2025-09-03",
+});
 
 function getProperty(properties, name) { return properties?.[name]; }
 function getDate(properties, name) { const prop = getProperty(properties, name); return prop?.date?.start ?? null; }
@@ -37,6 +40,10 @@ function setCORS(res) {
   res.setHeader("Access-Control-Max-Age", "86400");
 }
 
+export const config = {
+  maxDuration: 60,
+};
+
 export default async function handler(req, res) {
   setCORS(res);
 
@@ -45,22 +52,27 @@ export default async function handler(req, res) {
 
   try {
     if (!process.env.NOTION_TOKEN) return res.status(500).json({ success: false, error: "NOTION_TOKEN manquant" });
-    if (!process.env.NOTION_DATABASE_ID) return res.status(500).json({ success: false, error: "NOTION_DATABASE_ID manquant" });
+    if (!process.env.NOTION_DATA_SOURCE_ID) return res.status(500).json({ success: false, error: "NOTION_DATA_SOURCE_ID manquant" });
 
     const allResults = [];
     let hasMore = true;
     let startCursor = undefined;
+    let pageCount = 0;
 
     while (hasMore) {
-      const response = await notion.databases.query({
-        database_id: process.env.NOTION_DATABASE_ID,
+      const response = await notion.dataSources.query({
+        data_source_id: process.env.NOTION_DATA_SOURCE_ID,
         start_cursor: startCursor,
         page_size: 100,
       });
+      pageCount++;
+      console.log(`Page ${pageCount}: ${response.results.length} results, has_more: ${response.has_more}`);
       allResults.push(...response.results);
       hasMore = response.has_more;
       startCursor = response.next_cursor ?? undefined;
     }
+
+    console.log(`TOTAL: ${allResults.length} trades in ${pageCount} pages`);
 
     const trades = allResults.map((page) => {
       const p = page.properties;
@@ -68,16 +80,16 @@ export default async function handler(req, res) {
         id: page.id,
 
         // ── Identification ──
-        pair:              getSelectLike(p, "Pair"),          // "Pair" reste (colonne 43) — "Paire" est le titre affiché
+        pair:              getSelectLike(p, "Pair"),
         type:              getSelectLike(p, "Type"),
-        positionType:      getMultiSelect(p, "Position Type"), // ex "Type de trade"
+        positionType:      getMultiSelect(p, "Position Type"),
         flip:              getSelectLike(p, "Flip ?"),
         tier:              getSelectLike(p, "Tier"),
         noTag:             getCheckbox(p,   "No-tag ?"),
 
         // ── Timing ──
         date:              getDate(p,       "Date"),
-        Hour:              getSelectLike(p, "Hour"),    // ex "Heure DST"
+        Hour:              getSelectLike(p, "Hour"),
         heureUtc:          getSelectLike(p, "Hour"),
         min:               getSelectLike(p, "Min"),
         timeUtc1:          getSelectLike(p, "Hour"),
@@ -88,30 +100,30 @@ export default async function handler(req, res) {
         sessionUtcReco:    getSelectLike(p, "Session UTC (Recommandée)"),
 
         // ── Formules temporelles ──
-        jourFormule:       getSelectLike(p, "Day Formula"),      // ex "Jour Formule"
-        sessionFormule:    getSelectLike(p, "Session Formula"),   // ex "Session Formule"
-        moisFormule:       getSelectLike(p, "Month Formula"),     // ex "Mois Formule"
-        anneeFormule:      getSelectLike(p, "Year Formula"),      // ex "Année Formule"
-        annee:             getSelectLike(p, "Year"),              // ex "Année"
-        mois:              getSelectLike(p, "Month"),             // ex "Mois"
+        jourFormule:       getSelectLike(p, "Day Formula"),
+        sessionFormule:    getSelectLike(p, "Session Formula"),
+        moisFormule:       getSelectLike(p, "Month Formula"),
+        anneeFormule:      getSelectLike(p, "Year Formula"),
+        annee:             getSelectLike(p, "Year"),
+        mois:              getSelectLike(p, "Month"),
 
         // ── Setup H4 ──
-        structureH4:       getSelectLike(p,  "H4 Structure"),     // ex "Structure H4"
+        structureH4:       getSelectLike(p,  "H4 Structure"),
         obstaclesH4:       getMultiSelect(p, "H4 Obstacles").length
                              ? getMultiSelect(p, "H4 Obstacles")
-                             : getSelectLike(p, "H4 Obstacles"),  // ex "Obstacles H4"
+                             : getSelectLike(p, "H4 Obstacles"),
 
         // ── Setup M15 ──
         m15Type:           getSelectLike(p,  "M15 Type"),
-        m15TypeDetail:     getSelectLike(p,  "M15 Type Detailed"), // ex "M15 Type Détail"
-        structureM15:      getSelectLike(p,  "M15 Structure "),    // espace en fin — respecte le nom Notion
+        m15TypeDetail:     getSelectLike(p,  "M15 Type Detailed"),
+        structureM15:      getSelectLike(p,  "M15 Structure "),
         obstaclesM15:      getMultiSelect(p, "M15 Obstacles"),
-        avantageM15:       getSelectLike(p,  "M15 Pros"),          // ex "Avantage M15"
+        avantageM15:       getSelectLike(p,  "M15 Pros"),
         order:             getSelectLike(p,  "Order"),
-        confirmation:      getSelectLike(p,  "Confirmation / Continunation"), // faute dans Notion conservée
+        confirmation:      getSelectLike(p,  "Confirmation / Continunation"),
 
         // ── Gestion du trade ──
-        arriveeAuPe:       getSelectLike(p,  "Arrival to Entry"),  // ex "Arrivée au PE"
+        arriveeAuPe:       getSelectLike(p,  "Arrival to Entry"),
         beManagement:      getMultiSelect(p, "BE Management"),
         tp:                getSelectLike(p,  "TP"),
         risk:              getNumber(p,      "Risk"),
@@ -119,7 +131,7 @@ export default async function handler(req, res) {
         badFeeling:        getCheckbox(p,    "Bad feeling"),
 
         // ── Résultats ──
-        positionResult:    getSelectLike(p, "Position Result"),    // ex "Résultat TP 1"
+        positionResult:    getSelectLike(p, "Position Result"),
         resultatOb:        getSelectLike(p, "Résultat OB"),
         resultatMinus27:   getSelectLike(p, "Resultat -27"),
         resultatRr3:       getSelectLike(p, "Résultat RR 3"),
@@ -159,7 +171,6 @@ export default async function handler(req, res) {
         m15Before:         getFileUrl(p, "M15 Before"),
         m15After:          getFileUrl(p, "M15 After"),
         h4Before:          getFileUrl(p, "H4 Before"),
-        // Alias pour compatibilité dashboard existant
         m15Image:          getFileUrl(p, "M15 Before"),
       };
     });
@@ -170,6 +181,7 @@ export default async function handler(req, res) {
       trades,
     });
   } catch (error) {
+    console.error("API error:", error);
     return res.status(500).json({
       success: false,
       error: error.message ?? "Erreur inconnue",
