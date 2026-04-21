@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@notionhq/client": "^2.2.15"
+    "@notionhq/client": "^5.0.0"
   }
 }
